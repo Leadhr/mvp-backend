@@ -18,17 +18,22 @@ const ThirdPartyProviderSchema = new mongoose.Schema({
 // Create Schema
 const UserSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-    },
     email: {
       type: String,
       required: true,
       unique: true,
     },
-    email_is_verified: {
-      type: Boolean,
-      default: false,
+    first_name: {
+      type: String,
+      required: true
+    },
+    last_name: {
+      type: String,
+      required: true
+    },
+    organization_id: {
+      type: String,
+      required: true
     },
     password: {
       type: String,
