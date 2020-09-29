@@ -1,48 +1,96 @@
 require("dotenv").config();
-
 const express = require("express");
-const session = require("express-session");
-const MongoStore = require("connect-mongo")(session);
 const cors = require("cors");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+const path = require("path");
+const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-
-const passport = require("./passport/setup");
-const auth = require("./routes/auth");
+const User = require("./models/User");
+const withAuth = require("./middleware");
 
 const app = express();
-const PORT = 3001;
+
+const secret = "mysecretsshhh";
 
 app.use(cors());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cookieParser());
 
-mongoose.connect(process.env.DATABASE_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+mongoose.connect(process.env.DATABASE_URL, { useNewUrlParser: true }, function (err) {
+  if (err) {
+    throw err;
+  } else {
+    console.log(`Successfully connected to ${process.env.DATABASE_URL}`);
+  }
 });
-const db = mongoose.connection;
-db.on("error", (error) => console.log(error));
-db.on("open", () => console.log("Connected to Database"));
 
-// Bodyparser middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, "public")));
 
-// Express session
-app.use(
-  session({
-    secret: "very secret this is",
-    resave: false,
-    saveUninitialized: true,
-    store: new MongoStore({ mongooseConnection: mongoose.connection }),
-  })
-);
+app.get("/", function (req, res) {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
+app.get("/api/home", function (req, res) {
+  res.send("Welcome!");
+});
 
-// Routes
+app.get("/api/secret", withAuth, function (req, res) {
+  res.send("The password is potato");
+});
 
-app.use("/api/auth", auth);
+app.post("/api/register", function (req, res) {
+  const { email, password } = req.body;
+  const user = new User({ email, password });
+  user.save(function (err) {
+    if (err) {
+      console.log(err);
+      res.status(500).send("Error registering new user please try again.");
+    } else {
+      res.status(200).send("Welcome to the club!");
+    }
+  });
+});
+
+app.post("/api/authenticate", function (req, res) {
+  const { email, password } = req.body;
+  User.findOne({ email }, function (err, user) {
+    if (err) {
+      console.error(err);
+      res.status(500).json({
+        error: "Internal error please try again",
+      });
+    } else if (!user) {
+      res.status(401).json({
+        error: "Incorrect email or password",
+      });
+    } else {
+      user.isCorrectPassword(password, function (err, same) {
+        if (err) {
+          res.status(500).json({
+            error: "Internal error please try again",
+          });
+        } else if (!same) {
+          res.status(401).json({
+            error: "Incorrect email or password",
+          });
+        } else {
+          // Issue token
+          const payload = { email };
+          const token = jwt.sign(payload, secret, {
+            expiresIn: "1h",
+          });
+          res.cookie("token", token, { httpOnly: true }).sendStatus(200);
+        }
+      });
+    }
+  });
+});
+
+app.get("/checkToken", withAuth, function (req, res) {
+  res.sendStatus(200);
+});
 
 const questionsRouter = require("./routes/questions");
 app.use("/questions", questionsRouter);
@@ -50,4 +98,6 @@ app.use("/questions", questionsRouter);
 const answersRouter = require("./routes/answers");
 app.use("/answers", answersRouter);
 
-app.listen(PORT, () => console.log("Server Started"));
+app.listen(3001);
+
+//process.env.PORT ||
