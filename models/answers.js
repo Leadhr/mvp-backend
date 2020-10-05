@@ -9,6 +9,15 @@ const answerSchema = new mongoose.Schema({
   answers: {
     type: Array,
     required: true
+  },
+  score: {
+    type: Array,
+    required: true
+  },
+  time: {
+    type: Date,
+    default: Date.now,
+    required: true
   }
 })
 
