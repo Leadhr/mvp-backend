@@ -1,16 +1,6 @@
 const express = require('express')
 const router = express.Router()
 const Answers = require('../models/answers')
-
-//Getting all
-// router.get('/', async (req, res) => {
-//   try {
-//     const question = await Question.find()
-//     res.json(question)
-//   } catch (err) {
-//     res.status(500).json({message: err.message})
-//   }
-// })
 // Getting one
 router.get('/:id', getAnswer, (req, res) => {
   res.json(res.answer)
